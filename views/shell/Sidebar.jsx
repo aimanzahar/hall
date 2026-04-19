@@ -4,10 +4,16 @@
   const { Icon } = HB.Views;
   const M = HB.Models.Bookings;
 
-  function Sidebar({ route, setRoute, bookings, open, onClose }) {
+  function Sidebar({ route, setRoute, bookings, open, onClose, user, onLogout, onSignIn }) {
     const activeCount = M.countByStatus(bookings, 'active');
     const upcomingCount = M.countByStatus(bookings, 'upcoming');
     const nav = (r) => { setRoute(r); if (onClose) onClose(); };
+
+    const displayName = (user && (user.name || user.email)) || 'Guest';
+    const displayEmail = (user && user.email) || '';
+    const initials = (displayName || 'G')
+      .split(/[\s@.]+/).filter(Boolean).slice(0, 2)
+      .map(s => s[0].toUpperCase()).join('') || 'G';
     return (
       <aside className={`sidebar ${open ? 'open' : ''}`}>
         <div className="brand">
@@ -47,13 +53,30 @@
           <button className="nav-item"><Icon name="settings"/> Settings</button>
         </div>
 
-        <div className="user-chip">
-          <div className="avatar">AM</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>Amira Malik</div>
-            <div style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>amira@studio.co</div>
+        {user ? (
+          <div className="user-chip">
+            <div className="avatar">{initials}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{displayName}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayEmail}</div>
+            </div>
+            {onLogout && (
+              <button
+                className="user-logout"
+                onClick={onLogout}
+                title="Sign out"
+                aria-label="Sign out"
+              >Sign out</button>
+            )}
           </div>
-        </div>
+        ) : (
+          <button
+            className="btn primary user-signin"
+            onClick={() => { if (onSignIn) onSignIn(); if (onClose) onClose(); }}
+          >
+            Sign in · Create account
+          </button>
+        )}
       </aside>
     );
   }
