@@ -44,6 +44,9 @@ function Sidebar({ route, setRoute, bookings, open, onClose }) {
 
       <div className="nav-section">
         <div className="nav-label">Book</div>
+        <button className={`nav-item ${route === 'home' ? 'active' : ''}`} onClick={() => nav('home')}>
+          <Icon name="home"/> Home <span className="kbd">G H</span>
+        </button>
         <button className={`nav-item ${route === 'discover' ? 'active' : ''}`} onClick={() => nav('discover')}>
           <Icon name="compass"/> Discover <span className="kbd">G D</span>
         </button>
