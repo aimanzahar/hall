@@ -22,22 +22,26 @@
 <!-- HB namespace root (must load before any layer) -->
 <script type="text/babel" src="app.init.jsx"></script>
 
-<!-- MODEL layer: pure data + query operations, no React -->
+<!-- MODEL layer: pure data + query operations, no React. Auth loads first so
+     the other models can access the shared `pb` client lazily. -->
+<script type="text/babel" src="models/auth.model.jsx"></script>
 <script type="text/babel" src="models/schedule.model.jsx"></script>
 <script type="text/babel" src="models/venues.model.jsx"></script>
 <script type="text/babel" src="models/bookings.model.jsx"></script>
-<script type="text/babel" src="models/auth.model.jsx"></script>
 
 <!-- CONTROLLER layer: React hooks that own state + actions -->
 <script type="text/babel" src="controllers/useRouter.jsx"></script>
+<script type="text/babel" src="controllers/useAuth.jsx"></script>
+<script type="text/babel" src="controllers/useVenues.jsx"></script>
 <script type="text/babel" src="controllers/useBookings.jsx"></script>
+<script type="text/babel" src="controllers/useAdminBookings.jsx"></script>
 <script type="text/babel" src="controllers/useTweaks.jsx"></script>
 <script type="text/babel" src="controllers/useVenueSelection.jsx"></script>
 <script type="text/babel" src="controllers/useSidebar.jsx"></script>
-<script type="text/babel" src="controllers/useAuth.jsx"></script>
 
 <!-- VIEW layer: pure components. Shell before screens before App. -->
 <script type="text/babel" src="views/shell/Icon.jsx"></script>
+<script type="text/babel" src="views/shell/VenueHero.jsx"></script>
 <script type="text/babel" src="views/shell/Sidebar.jsx"></script>
 <script type="text/babel" src="views/shell/Topbar.jsx"></script>
 <script type="text/babel" src="views/shell/LandingHeader.jsx"></script>
@@ -50,8 +54,9 @@
 <script type="text/babel" src="views/screens/BookScreen.jsx"></script>
 <script type="text/babel" src="views/screens/ConfirmScreen.jsx"></script>
 <script type="text/babel" src="views/screens/BookingsScreen.jsx"></script>
-<script type="text/babel" src="views/screens/CheckinScreen.jsx"></script>
 <script type="text/babel" src="views/screens/AuthScreen.jsx"></script>
+<script type="text/babel" src="views/screens/AdminLoginScreen.jsx"></script>
+<script type="text/babel" src="views/screens/AdminDashboard.jsx"></script>
 <script type="text/babel" src="views/App.jsx"></script>
 
 <!-- Mount -->

@@ -1,52 +1,70 @@
-// views/App.jsx — Composition root. Calls controllers, derives crumbs, routes
-// the current screen. No domain state lives here.
+// views/App.jsx — Composition root. Loads venues + bookings from PocketBase,
+// routes the current screen, and enforces user / admin separation.
 (function () {
   const { useEffect } = React;
   const C = HB.Controllers;
-  const { VENUES, getById } = HB.Models.Venues;
+  const V = HB.Models.Venues;
   const {
     Icon, Sidebar, Topbar, ChatFab, TweaksPanel, LandingHeader,
     HomeScreen, DiscoverScreen, VenueScreen, BookScreen,
-    ConfirmScreen, BookingsScreen, CheckinScreen, AuthScreen,
+    ConfirmScreen, BookingsScreen, AuthScreen,
+    AdminLoginScreen, AdminDashboard,
   } = HB.Views;
 
-  // Public routes render for anyone. Everything else forces an auth detour.
-  const PUBLIC_ROUTES = new Set(['home', 'discover', 'venue', 'auth']);
-  const PROTECTED_ROUTES = new Set(['book', 'confirm', 'bookings', 'checkin']);
+  const PUBLIC_ROUTES      = new Set(['home', 'discover', 'venue', 'auth', 'admin-login']);
+  const USER_ROUTES        = new Set(['book', 'confirm', 'bookings']);
+  const ADMIN_ROUTES       = new Set(['admin']);
 
-  function buildCrumbs(route, selectedVenueId) {
-    const venueName = getById(selectedVenueId, VENUES).name;
+  function buildCrumbs(route, selectedVenueId, venues) {
+    const venueName = (V.getById(selectedVenueId, venues) || {}).name;
     return ({
-      home: ['HallBook', 'Home'],
-      discover: ['HallBook', 'Discover'],
-      venue: ['HallBook', 'Discover', venueName || 'Venue'],
-      book: ['HallBook', 'New booking'],
-      confirm: ['HallBook', 'Confirmation'],
-      bookings: ['HallBook', 'My bookings'],
-      checkin: ['HallBook', 'Check-in'],
-      auth: ['HallBook', 'Sign in'],
+      home:        ['HallBook', 'Home'],
+      discover:    ['HallBook', 'Discover'],
+      venue:       ['HallBook', 'Discover', venueName || 'Venue'],
+      book:        ['HallBook', 'New booking'],
+      confirm:     ['HallBook', 'Request submitted'],
+      bookings:    ['HallBook', 'My bookings'],
+      auth:        ['HallBook', 'Sign in'],
     })[route] || ['HallBook'];
   }
 
   function App({ tweakDefaults }) {
-    const auth = C.useAuth();
+    const auth        = C.useAuth();
     const { route, setRoute } = C.useRouter();
-    const venueSel = C.useVenueSelection('v1');
-    const bookingsCtl = C.useBookings();
-    const tweaksCtl = C.useTweaks(tweakDefaults);
+    const venueCtl    = C.useVenues();
+    const venueSel    = C.useVenueSelection();
+    const userBookings  = C.useBookings(auth.role === 'user' ? auth.user : null);
+    const adminBookings = C.useAdminBookings(auth.role === 'admin' ? auth.user : null);
+    const tweaksCtl   = C.useTweaks(tweakDefaults);
     const { sidebarOpen, openSidebar, closeSidebar } = C.useSidebar();
 
-    // If an unauthenticated visitor lands on a protected route, divert to auth.
-    useEffect(() => {
-      if (!auth.user && PROTECTED_ROUTES.has(route)) setRoute('auth');
-    }, [auth.user, route, setRoute]);
+    const venues = venueCtl.venues;
 
-    // Successful auth returns the user to home (not back to the login screen).
+    // --- route guards ---
+    // 1. Protected user routes require a signed-in customer (role==='user').
     useEffect(() => {
-      if (auth.user && route === 'auth') setRoute('home');
-    }, [auth.user, route, setRoute]);
+      if (USER_ROUTES.has(route) && auth.role !== 'user') setRoute('auth');
+    }, [auth.role, route, setRoute]);
 
-    // Dedicated auth page — full-bleed, no app chrome.
+    // 2. Admin-only routes require an admin session.
+    useEffect(() => {
+      if (ADMIN_ROUTES.has(route) && auth.role !== 'admin') setRoute('admin-login');
+    }, [auth.role, route, setRoute]);
+
+    // 3. An admin shouldn't see the customer sign-in screen; drop them home.
+    useEffect(() => {
+      if (route === 'auth' && auth.role === 'admin') setRoute('admin');
+    }, [auth.role, route, setRoute]);
+
+    // 4. A signed-in customer hitting 'auth' / 'admin-login' or the public
+    //    'home' landing is sent straight to the discover catalogue.
+    useEffect(() => {
+      if (route === 'auth' && auth.role === 'user') setRoute('discover');
+      if (route === 'home' && auth.role === 'user') setRoute('discover');
+      if (route === 'admin-login' && auth.role === 'admin') setRoute('admin');
+    }, [auth.role, route, setRoute]);
+
+    // --- dedicated full-bleed auth screens ---
     if (route === 'auth' && !auth.user) {
       return (
         <AuthScreen
@@ -54,11 +72,33 @@
           register={auth.register}
           busy={!auth.authReady}
           onClose={() => setRoute('home')}
+          onAdminSignIn={() => setRoute('admin-login')}
         />
       );
     }
 
-    // Public landing (no sidebar / topbar). Only home / discover / venue render here.
+    if (route === 'admin-login' && auth.role !== 'admin') {
+      return (
+        <AdminLoginScreen
+          loginAdmin={auth.loginAdmin}
+          busy={!auth.authReady}
+          onBack={() => setRoute('home')}
+        />
+      );
+    }
+
+    // --- admin shell ---
+    if (auth.role === 'admin') {
+      return (
+        <AdminDashboard
+          admin={auth.user}
+          ctl={adminBookings}
+          onLogout={() => { auth.logout(); setRoute('home'); }}
+        />
+      );
+    }
+
+    // --- public landing (no sidebar / topbar) ---
     if (!auth.user) {
       return (
         <div className="landing" data-screen-label={`Landing · ${route}`}>
@@ -72,19 +112,24 @@
               <HomeScreen
                 setRoute={setRoute}
                 setSelectedVenue={venueSel.setSelectedVenue}
+                venues={venues}
+                onSignIn={() => setRoute('auth')}
+                onAdminSignIn={() => setRoute('admin-login')}
               />
             )}
             {route === 'discover' && (
               <DiscoverScreen
                 setRoute={setRoute}
                 setSelectedVenue={venueSel.setSelectedVenue}
+                venues={venues}
               />
             )}
             {route === 'venue' && (
               <VenueScreen
-                venueId={venueSel.selectedVenue}
+                venueId={venueSel.selectedVenue || (venues[0] && venues[0].id)}
                 setRoute={setRoute}
                 setDraft={venueSel.setDraft}
+                venues={venues}
               />
             )}
           </main>
@@ -92,9 +137,9 @@
       );
     }
 
-    const crumbs = buildCrumbs(route, venueSel.selectedVenue);
-
-    const topAction = (route === 'home' || route === 'discover')
+    // --- authenticated customer shell ---
+    const crumbs = buildCrumbs(route, venueSel.selectedVenue, venues);
+    const topAction = route === 'discover'
       ? <button className="btn primary" onClick={() => setRoute('bookings')}>
           <Icon name="ticket" size={13}/> My bookings
         </button>
@@ -104,7 +149,7 @@
       <div className="app" data-screen-label={`Screen · ${route}`}>
         <Sidebar
           route={route} setRoute={setRoute}
-          bookings={auth.user ? bookingsCtl.bookings : []}
+          bookings={userBookings.bookings}
           open={sidebarOpen} onClose={closeSidebar}
           user={auth.user} onLogout={auth.logout}
           onSignIn={() => setRoute('auth')}
@@ -112,50 +157,45 @@
         <div className={`sidebar-scrim ${sidebarOpen ? 'show' : ''}`} onClick={closeSidebar}/>
         <main className="main" data-screen-label={route}>
           <Topbar crumbs={crumbs} action={topAction} onMenu={openSidebar}/>
-          {route === 'home' && (
-            <HomeScreen
-              setRoute={setRoute}
-              setSelectedVenue={venueSel.setSelectedVenue}
-            />
-          )}
           {route === 'discover' && (
             <DiscoverScreen
               setRoute={setRoute}
               setSelectedVenue={venueSel.setSelectedVenue}
+              venues={venues}
             />
           )}
           {route === 'venue' && (
             <VenueScreen
-              venueId={venueSel.selectedVenue}
+              venueId={venueSel.selectedVenue || (venues[0] && venues[0].id)}
               setRoute={setRoute}
               setDraft={venueSel.setDraft}
+              venues={venues}
             />
           )}
-          {route === 'book' && auth.user && (
+          {route === 'book' && (
             <BookScreen
               draft={venueSel.draft}
               setRoute={setRoute}
-              setCompletedBooking={bookingsCtl.onBookingCreated}
+              venues={venues}
+              user={auth.user}
+              submitBooking={userBookings.submitBooking}
             />
           )}
-          {route === 'confirm' && auth.user && (
+          {route === 'confirm' && (
             <ConfirmScreen
-              booking={bookingsCtl.completedBooking}
+              booking={userBookings.completedBooking}
               setRoute={setRoute}
+              venues={venues}
             />
           )}
-          {route === 'bookings' && auth.user && (
+          {route === 'bookings' && (
             <BookingsScreen
-              bookings={bookingsCtl.bookings}
+              bookings={userBookings.bookings}
+              loading={userBookings.loading}
+              error={userBookings.error}
+              refresh={userBookings.refresh}
               setRoute={setRoute}
-              setActiveBookingId={bookingsCtl.setActiveBookingId}
-            />
-          )}
-          {route === 'checkin' && auth.user && (
-            <CheckinScreen
-              bookings={bookingsCtl.bookings}
-              activeBookingId={bookingsCtl.activeBookingId}
-              setRoute={setRoute}
+              venues={venues}
             />
           )}
         </main>

@@ -1,29 +1,46 @@
-// controllers/useBookings.jsx — Owns the bookings list + active-id + last-completed.
-// Actions call into HB.Models.Bookings for pure data transforms.
+// controllers/useBookings.jsx — Loads the signed-in user's bookings from
+// PocketBase, and exposes actions for creating new ones and surfacing the
+// just-completed booking to the confirmation screen.
 (function () {
-  const { useState } = React;
+  const { useState, useEffect, useCallback } = React;
   const M = HB.Models.Bookings;
 
-  function useBookings() {
-    const [bookings, setBookings] = useState(M.BOOKINGS);
+  function useBookings(user) {
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [completedBooking, setCompletedBooking] = useState(null);
-    const [activeBookingId, setActiveBookingId] = useState(
-      () => M.firstActiveOrFirst(M.BOOKINGS)
-    );
+    const [activeBookingId, setActiveBookingId] = useState(null);
 
-    // Caller (BookScreen) builds a draft record via Models.Bookings.make; we
-    // append it and stash it as "just completed" for the confirmation screen.
-    const onBookingCreated = (draft) => {
-      setCompletedBooking(draft);
-      setBookings(list => M.append(list, draft));
-    };
+    const refresh = useCallback(async () => {
+      if (!user) { setBookings([]); return; }
+      setLoading(true); setError(null);
+      try {
+        const list = await M.listForAuth();
+        setBookings(list);
+      } catch (e) {
+        setError(e.message || String(e));
+      } finally {
+        setLoading(false);
+      }
+    }, [user]);
+
+    useEffect(() => { refresh(); }, [refresh]);
+
+    // Called by BookScreen after it has built a PocketBase payload. Returns the
+    // created record (with status=pending) so the confirmation screen can show it.
+    const submitBooking = useCallback(async (payload) => {
+      const created = await M.create(payload);
+      setCompletedBooking(created);
+      setBookings(list => [created, ...list]);
+      return created;
+    }, []);
 
     return {
-      bookings,
-      completedBooking,
-      activeBookingId,
-      setActiveBookingId,
-      onBookingCreated,
+      bookings, loading, error,
+      completedBooking, setCompletedBooking,
+      activeBookingId, setActiveBookingId,
+      refresh, submitBooking,
     };
   }
 
