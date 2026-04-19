@@ -26,15 +26,17 @@ function Icon({ name, size = 16 }) {
     case 'plus': return (<svg width={s} height={s} viewBox="0 0 24 24" {...stroke}><path d="M12 5v14M5 12h14"/></svg>);
     case 'pin': return (<svg width={s} height={s} viewBox="0 0 24 24" {...stroke}><path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>);
     case 'sparkle': return (<svg width={s} height={s} viewBox="0 0 24 24" {...stroke}><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>);
+    case 'menu': return (<svg width={s} height={s} viewBox="0 0 24 24" {...stroke}><path d="M4 6h16M4 12h16M4 18h16"/></svg>);
     default: return null;
   }
 }
 
-function Sidebar({ route, setRoute, bookings }) {
+function Sidebar({ route, setRoute, bookings, open, onClose }) {
   const activeCount = bookings.filter(b => b.status === 'active').length;
   const upcomingCount = bookings.filter(b => b.status === 'upcoming').length;
+  const nav = (r) => { setRoute(r); if (onClose) onClose(); };
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand">
         <div className="brand-mark">H</div>
         <div className="brand-name">Hall<em>book</em></div>
@@ -42,23 +44,23 @@ function Sidebar({ route, setRoute, bookings }) {
 
       <div className="nav-section">
         <div className="nav-label">Book</div>
-        <button className={`nav-item ${route === 'discover' ? 'active' : ''}`} onClick={() => setRoute('discover')}>
+        <button className={`nav-item ${route === 'discover' ? 'active' : ''}`} onClick={() => nav('discover')}>
           <Icon name="compass"/> Discover <span className="kbd">G D</span>
         </button>
-        <button className={`nav-item ${route === 'venue' ? 'active' : ''}`} onClick={() => setRoute('venue')}>
+        <button className={`nav-item ${route === 'venue' ? 'active' : ''}`} onClick={() => nav('venue')}>
           <Icon name="pin"/> The Atrium
         </button>
-        <button className={`nav-item ${route === 'book' ? 'active' : ''}`} onClick={() => setRoute('book')}>
+        <button className={`nav-item ${route === 'book' ? 'active' : ''}`} onClick={() => nav('book')}>
           <Icon name="plus"/> New booking
         </button>
       </div>
 
       <div className="nav-section">
         <div className="nav-label">Manage</div>
-        <button className={`nav-item ${route === 'bookings' ? 'active' : ''}`} onClick={() => setRoute('bookings')}>
+        <button className={`nav-item ${route === 'bookings' ? 'active' : ''}`} onClick={() => nav('bookings')}>
           <Icon name="ticket"/> My bookings <span className="count">{upcomingCount + activeCount}</span>
         </button>
-        <button className={`nav-item ${route === 'checkin' ? 'active' : ''}`} onClick={() => setRoute('checkin')}>
+        <button className={`nav-item ${route === 'checkin' ? 'active' : ''}`} onClick={() => nav('checkin')}>
           <Icon name="qr"/> Self check-in {activeCount > 0 && <span className="count" style={{background: 'rgba(23,133,74,0.12)', color: 'var(--ok)'}}>{activeCount} live</span>}
         </button>
         <button className="nav-item"><Icon name="heart"/> Saved</button>
@@ -80,9 +82,12 @@ function Sidebar({ route, setRoute, bookings }) {
   );
 }
 
-function Topbar({ crumbs, action }) {
+function Topbar({ crumbs, action, onMenu }) {
   return (
     <div className="topbar">
+      <button className="topbar-menu" onClick={onMenu} aria-label="Open menu">
+        <Icon name="menu" size={18}/>
+      </button>
       <div className="crumbs">
         {crumbs.map((c, i) => (
           <React.Fragment key={i}>

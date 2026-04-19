@@ -127,7 +127,7 @@ function VenueCard({ v, onClick }) {
 function MapView({ venues, selected, setSelected, onOpen }) {
   const sel = venues.find(v => v.id === selected) || venues[0];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 18 }}>
+    <div className="layout-map">
       <div className="map">
         {/* roads */}
         <div className="map-road" style={{ left: 0, right: 0, top: '55%', height: 6 }}/>
@@ -195,8 +195,8 @@ function VenueScreen({ venueId, setRoute, setDraft }) {
       </button>
 
       {/* Hero gallery */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gridTemplateRows: '180px 180px', gap: 8, marginBottom: 20, borderRadius: 12, overflow: 'hidden' }}>
-        <div className={`ph ${v.hero}`} style={{ gridRow: '1 / 3' }}>
+      <div className="layout-venue-gallery">
+        <div className={`ph ${v.hero}`}>
           <div className="ph-label">{v.name.toUpperCase()} · MAIN HALL</div>
         </div>
         <div className={`ph ${v.hero}`} style={{ filter: 'brightness(0.96)' }}>
@@ -213,7 +213,7 @@ function VenueScreen({ venueId, setRoute, setDraft }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32 }}>
+      <div className="layout-venue-detail">
         {/* Left: info */}
         <div>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 6 }}>
@@ -233,7 +233,7 @@ function VenueScreen({ venueId, setRoute, setDraft }) {
           </p>
 
           {/* Quick stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 22, marginBottom: 30 }}>
+          <div className="quick-stats">
             {[
               ['Capacity', `${v.capacity}`],
               ['Floor area', v.size],

@@ -45,6 +45,7 @@ function App() {
   const [bookings, setBookings] = React.useState(BOOKINGS);
   const [completedBooking, setCompletedBooking] = React.useState(null);
   const [activeBookingId, setActiveBookingId] = React.useState(bookings.find(b => b.status === 'active')?.id || bookings[0].id);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Tweaks
   const [tweaks, setTweaks] = React.useState(TWEAK_DEFAULTS);
@@ -98,9 +99,10 @@ function App() {
 
   return (
     <div className="app" data-screen-label={`Screen · ${route}`}>
-      <Sidebar route={route} setRoute={setRoute} bookings={bookings}/>
+      <Sidebar route={route} setRoute={setRoute} bookings={bookings} open={sidebarOpen} onClose={() => setSidebarOpen(false)}/>
+      <div className={`sidebar-scrim ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}/>
       <main className="main" data-screen-label={route}>
-        <Topbar crumbs={crumbs} action={topAction}/>
+        <Topbar crumbs={crumbs} action={topAction} onMenu={() => setSidebarOpen(true)}/>
         {route === 'discover' && <DiscoverScreen setRoute={setRoute} setSelectedVenue={setSelectedVenue}/>}
         {route === 'venue' && <VenueScreen venueId={selectedVenue} setRoute={setRoute} setDraft={setDraft}/>}
         {route === 'book' && <BookScreen draft={draft} setRoute={setRoute} setCompletedBooking={onBookingCreated}/>}

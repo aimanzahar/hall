@@ -58,7 +58,7 @@ function BookScreen({ draft, setRoute, setCompletedBooking }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 32 }}>
+      <div className="layout-book-flow">
         <div className="card card-pad" style={{ padding: 24 }}>
           {step === 0 && (
             <div style={{ display: 'grid', gap: 18 }}>
@@ -257,7 +257,7 @@ function ConfirmScreen({ booking, setRoute }) {
             <span className="badge ok">● Confirmed</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, padding: '16px 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
+          <div className="confirm-trio">
             <div><div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.06em' }}>Date</div><div style={{ fontWeight: 500, marginTop: 2 }}>{booking.date}</div></div>
             <div><div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.06em' }}>Time</div><div style={{ fontWeight: 500, marginTop: 2 }}>{booking.time}</div></div>
             <div><div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.06em' }}>Guests</div><div style={{ fontWeight: 500, marginTop: 2 }}>{booking.guests}</div></div>
@@ -349,11 +349,7 @@ function BookingsScreen({ bookings, setRoute, setActiveBookingId }) {
       </div>
 
       <div className="card" style={{ marginTop: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-        <div style={{
-          display: 'grid', gridTemplateColumns: '90px 1.5fr 1fr 1fr 120px 140px',
-          gap: 16, padding: '10px 18px', fontSize: 11, textTransform: 'uppercase',
-          letterSpacing: '0.06em', color: 'var(--muted)', borderBottom: '1px solid var(--line)',
-        }}>
+        <div className="booking-head">
           <span/>
           <span>Venue</span>
           <span>Date & time</span>
@@ -464,7 +460,7 @@ function CheckinScreen({ bookings, activeBookingId, setRoute }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 22 }}>
+      <div className="layout-checkin">
         {/* Left: QR / PIN */}
         <div className="card" style={{ padding: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
