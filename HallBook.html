@@ -12,17 +12,44 @@
 <body>
 <div id="root"></div>
 
+<!-- Vendor libs -->
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 
-<script type="text/babel" src="data.jsx"></script>
-<script type="text/babel" src="shell.jsx"></script>
-<script type="text/babel" src="screens.jsx"></script>
-<script type="text/babel" src="screens2.jsx"></script>
-<script type="text/babel" src="home.jsx"></script>
+<!-- HB namespace root (must load before any layer) -->
+<script type="text/babel" src="app.init.jsx"></script>
 
+<!-- MODEL layer: pure data + query operations, no React -->
+<script type="text/babel" src="models/schedule.model.jsx"></script>
+<script type="text/babel" src="models/venues.model.jsx"></script>
+<script type="text/babel" src="models/bookings.model.jsx"></script>
+
+<!-- CONTROLLER layer: React hooks that own state + actions -->
+<script type="text/babel" src="controllers/useRouter.jsx"></script>
+<script type="text/babel" src="controllers/useBookings.jsx"></script>
+<script type="text/babel" src="controllers/useTweaks.jsx"></script>
+<script type="text/babel" src="controllers/useVenueSelection.jsx"></script>
+<script type="text/babel" src="controllers/useSidebar.jsx"></script>
+
+<!-- VIEW layer: pure components. Shell before screens before App. -->
+<script type="text/babel" src="views/shell/Icon.jsx"></script>
+<script type="text/babel" src="views/shell/Sidebar.jsx"></script>
+<script type="text/babel" src="views/shell/Topbar.jsx"></script>
+<script type="text/babel" src="views/shell/ChatFab.jsx"></script>
+<script type="text/babel" src="views/shell/Placeholder.jsx"></script>
+<script type="text/babel" src="views/shell/TweaksPanel.jsx"></script>
+<script type="text/babel" src="views/screens/HomeScreen.jsx"></script>
+<script type="text/babel" src="views/screens/DiscoverScreen.jsx"></script>
+<script type="text/babel" src="views/screens/VenueScreen.jsx"></script>
+<script type="text/babel" src="views/screens/BookScreen.jsx"></script>
+<script type="text/babel" src="views/screens/ConfirmScreen.jsx"></script>
+<script type="text/babel" src="views/screens/BookingsScreen.jsx"></script>
+<script type="text/babel" src="views/screens/CheckinScreen.jsx"></script>
+<script type="text/babel" src="views/App.jsx"></script>
+
+<!-- Mount -->
 <script type="text/babel">
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "accent": "indigo",
@@ -32,143 +59,8 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "heroLayout": "editorial"
 }/*EDITMODE-END*/;
 
-const ACCENTS = [
-  { k: 'indigo', hex: '#2b3bff', label: 'Indigo' },
-  { k: 'emerald', hex: '#0e7a4a', label: 'Emerald' },
-  { k: 'amber', hex: '#b5691e', label: 'Amber' },
-  { k: 'rose', hex: '#c2185b', label: 'Rose' },
-  { k: 'ink', hex: '#111113', label: 'Ink' },
-];
-
-function App() {
-  const [route, setRoute] = React.useState(() => localStorage.getItem('hb.route') || 'home');
-  const [selectedVenue, setSelectedVenue] = React.useState('v1');
-  const [draft, setDraft] = React.useState(null);
-  const [bookings, setBookings] = React.useState(BOOKINGS);
-  const [completedBooking, setCompletedBooking] = React.useState(null);
-  const [activeBookingId, setActiveBookingId] = React.useState(bookings.find(b => b.status === 'active')?.id || bookings[0].id);
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-
-  // Tweaks
-  const [tweaks, setTweaks] = React.useState(TWEAK_DEFAULTS);
-  const [tweaksOpen, setTweaksOpen] = React.useState(false);
-
-  React.useEffect(() => { localStorage.setItem('hb.route', route); }, [route]);
-
-  // Tweak protocol
-  React.useEffect(() => {
-    const handler = (e) => {
-      if (e.data?.type === '__activate_edit_mode') setTweaksOpen(true);
-      if (e.data?.type === '__deactivate_edit_mode') setTweaksOpen(false);
-    };
-    window.addEventListener('message', handler);
-    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
-    return () => window.removeEventListener('message', handler);
-  }, []);
-
-  const updateTweak = (k, v) => {
-    setTweaks(t => {
-      const next = { ...t, [k]: v };
-      window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*');
-      return next;
-    });
-  };
-
-  // Apply theme + accent to root
-  React.useEffect(() => {
-    document.body.dataset.theme = tweaks.theme;
-    document.body.dataset.accent = tweaks.accent;
-    document.body.dataset.density = tweaks.density;
-  }, [tweaks]);
-
-  const onBookingCreated = (b) => {
-    setCompletedBooking(b);
-    setBookings(list => [{ ...b, id: 'b' + (list.length + 1) }, ...list]);
-  };
-
-  const crumbs = {
-    home: ['HallBook', 'Home'],
-    discover: ['HallBook', 'Discover'],
-    venue: ['HallBook', 'Discover', VENUES.find(v => v.id === selectedVenue)?.name || 'Venue'],
-    book: ['HallBook', 'New booking'],
-    confirm: ['HallBook', 'Confirmation'],
-    bookings: ['HallBook', 'My bookings'],
-    checkin: ['HallBook', 'Check-in'],
-  }[route] || ['HallBook'];
-
-  const topAction = (route === 'home' || route === 'discover')
-    ? <button className="btn primary" onClick={() => setRoute('bookings')}><Icon name="ticket" size={13}/> My bookings</button>
-    : null;
-
-  return (
-    <div className="app" data-screen-label={`Screen · ${route}`}>
-      <Sidebar route={route} setRoute={setRoute} bookings={bookings} open={sidebarOpen} onClose={() => setSidebarOpen(false)}/>
-      <div className={`sidebar-scrim ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}/>
-      <main className="main" data-screen-label={route}>
-        <Topbar crumbs={crumbs} action={topAction} onMenu={() => setSidebarOpen(true)}/>
-        {route === 'home' && <HomeScreen setRoute={setRoute} setSelectedVenue={setSelectedVenue}/>}
-        {route === 'discover' && <DiscoverScreen setRoute={setRoute} setSelectedVenue={setSelectedVenue}/>}
-        {route === 'venue' && <VenueScreen venueId={selectedVenue} setRoute={setRoute} setDraft={setDraft}/>}
-        {route === 'book' && <BookScreen draft={draft} setRoute={setRoute} setCompletedBooking={onBookingCreated}/>}
-        {route === 'confirm' && <ConfirmScreen booking={completedBooking} setRoute={setRoute}/>}
-        {route === 'bookings' && <BookingsScreen bookings={bookings} setRoute={setRoute} setActiveBookingId={setActiveBookingId}/>}
-        {route === 'checkin' && <CheckinScreen bookings={bookings} activeBookingId={activeBookingId} setRoute={setRoute}/>}
-      </main>
-      <ChatFab/>
-      {tweaksOpen && <TweaksPanel tweaks={tweaks} updateTweak={updateTweak} close={() => setTweaksOpen(false)}/>}
-    </div>
-  );
-}
-
-function TweaksPanel({ tweaks, updateTweak, close }) {
-  return (
-    <div className="tweaks">
-      <div className="tweaks-head">
-        <span>Tweaks</span>
-        <button className="btn ghost" style={{ padding: '2px 6px', fontSize: 18, lineHeight: 1 }} onClick={close}>×</button>
-      </div>
-      <div className="tweaks-body">
-        <div className="tweak-row">
-          <label>Accent</label>
-          <div className="swatches">
-            {ACCENTS.map(a => (
-              <button key={a.k} className={`swatch ${tweaks.accent === a.k ? 'selected' : ''}`}
-                style={{ background: a.hex }}
-                title={a.label}
-                onClick={() => updateTweak('accent', a.k)}/>
-            ))}
-          </div>
-        </div>
-        <div className="tweak-row">
-          <label>Theme</label>
-          <div className="segmented">
-            <button className={tweaks.theme === 'light' ? 'active' : ''} onClick={() => updateTweak('theme', 'light')}>Light</button>
-            <button className={tweaks.theme === 'dark' ? 'active' : ''} onClick={() => updateTweak('theme', 'dark')}>Dark</button>
-          </div>
-        </div>
-        <div className="tweak-row">
-          <label>Hero layout</label>
-          <div className="segmented">
-            <button className={tweaks.heroLayout === 'editorial' ? 'active' : ''} onClick={() => updateTweak('heroLayout', 'editorial')}>Editorial</button>
-            <button className={tweaks.heroLayout === 'compact' ? 'active' : ''} onClick={() => updateTweak('heroLayout', 'compact')}>Compact</button>
-          </div>
-        </div>
-        <div className="tweak-row">
-          <label>Density</label>
-          <div className="segmented">
-            <button className={tweaks.density === 'comfortable' ? 'active' : ''} onClick={() => updateTweak('density', 'comfortable')}>Comfortable</button>
-            <button className={tweaks.density === 'compact' ? 'active' : ''} onClick={() => updateTweak('density', 'compact')}>Compact</button>
-          </div>
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
-          Toggle accent, dark mode, and layout variants. Tweaks persist across reload.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+ReactDOM.createRoot(document.getElementById('root'))
+  .render(<HB.Views.App tweakDefaults={TWEAK_DEFAULTS}/>);
 </script>
 </body>
 </html>
